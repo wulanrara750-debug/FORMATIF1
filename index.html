@@ -53,7 +53,7 @@
 
         .hidden { display: none !important; }
 
-        /* Story Container */
+        /* Collapsible Story Box */
         .story-box {
             background: #e8f5e9;
             border-left: 5px solid var(--primary-color);
@@ -62,6 +62,22 @@
             margin-bottom: 20px;
             font-size: 1.05rem;
             line-height: 1.6;
+        }
+
+        .btn-toggle-reading {
+            background: #38a169;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
         }
 
         .media-box {
@@ -158,17 +174,10 @@
     </header>
 
     <div class="container">
-        <!-- STEP 1: IDENTITAS SISWA & NARASI AWAL -->
+        <!-- STEP 1: IDENTITAS SISWA -->
         <div id="screen-intro">
             <h2>Formatif 1: Sifat-Sifat Operasi Hitung</h2>
             <br>
-            <div class="story-box">
-                <h3>📖 Kasus: Toko Mainan Cerdas</h3>
-                <p>Suatu hari, Toko Mainan Cerdas sedang menyiapkan paket hadiah untuk acara ulang tahun sekolah. Dalam paket tersebut, setiap kantong berisi 3 mobil-mobilan, 2 boneka kecil, dan 4 stiker warna-warni. Harga satu mobil-mobilan adalah Rp4.000,00, satu boneka kecil Rp3.000,00, dan satu stiker Rp500,00.</p>
-                <br>
-                <p>Pak Rudi, pemilik toko, ingin menghitung total harga dengan cara paling efisien dan cepat agar tidak salah saat membuat nota. Namun, karyawan barunya, Dita, menghitung dengan cara yang berbeda. Dari perbedaan cara menghitung itu, Pak Rudi ingin mengajarkan sifat-sifat operasi hitung kepada Dita supaya ia bisa menghitung lebih cepat tanpa kalkulator.</p>
-            </div>
-
             <form onsubmit="startQuiz(event)">
                 <label for="student-name"><b>Nama Lengkap Siswa:</b></label>
                 <input type="text" id="student-name" required placeholder="Masukkan nama Anda...">
@@ -180,11 +189,25 @@
             </form>
         </div>
 
-        <!-- STEP 2: PENGERJAAN SOAL -->
+        <!-- STEP 2: PENGERJAAN SOAL (BACAAN TERSEDIA DAN BISA DIBUKA/DITUTUP) -->
         <div id="screen-quiz" class="hidden">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <span id="question-tracker" style="font-weight: bold;">Soal 1 dari 4</span>
                 <span class="timer-badge" id="timer-display">⏱ Waktu: 00:00</span>
+            </div>
+
+            <!-- TOGGLE BACAAN KASUS -->
+            <button type="button" class="btn-toggle-reading" onclick="toggleReading()">
+                <span>📖 Bacaan Kasus Soal (Klik untuk Buka/Tutup)</span>
+                <span id="toggle-icon">▼</span>
+            </button>
+
+            <div id="reading-box" class="story-box hidden">
+                <h3>📖 Kasus: Toko Mainan Cerdas</h3>
+                <br>
+                <p>Suatu hari, Toko Mainan Cerdas sedang menyiapkan paket hadiah untuk acara ulang tahun sekolah. Dalam paket tersebut, setiap kantong berisi 3 mobil-mobilan, 2 boneka kecil, dan 4 stiker warna-warni. Harga satu mobil-mobilan adalah Rp4.000,00, satu boneka kecil Rp3.000,00, dan satu stiker Rp500,00.</p>
+                <br>
+                <p>Pak Rudi, pemilik toko, ingin menghitung total harga dengan cara paling efisien dan cepat agar tidak salah saat membuat nota. Namun, karyawan barunya, Dita, menghitung dengan cara yang berbeda. Dari perbedaan cara menghitung itu, Pak Rudi ingin mengajarkan sifat-sifat operasi hitung kepada Dita supaya ia bisa menghitung lebih cepat tanpa kalkulator.</p>
             </div>
 
             <!-- SVG Visual Animasi Ilustrasi -->
@@ -252,7 +275,7 @@
     </div>
 
     <script>
-        // URL GOOGLE APPS SCRIPT (Tempelkan URL Web App Anda di bawah)
+        // URL GOOGLE APPS SCRIPT
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwIBHObk0PWhvjj2aMCeDxSwUmgaQ7HFtfmBvZsNreAn1hE6IAW_bQk5LzVF8EPW2TM/exec";
 
         // SANDI PORTAL GURU
@@ -311,8 +334,11 @@
         let bgmOn = false;
         let voOn = true;
         let audioCtx;
+        let bgmStep = 0;
 
-        // BGM Audio Engine
+        // BGM UPBEAT AUDIO ENGINE (NADA CERIA & SEMANGAT)
+        const upbeatNotes = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63]; // C4, E4, G4, C5, G4, E4
+
         function playBGM() {
             if (!bgmOn) return;
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -320,15 +346,22 @@
             
             let osc = audioCtx.createOscillator();
             let gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(261.63, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+            
+            osc.type = 'triangle'; // Suara lebih ceria & dinamis
+            let freq = upbeatNotes[bgmStep % upbeatNotes.length];
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            
+            gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+            
             osc.connect(gain);
             gain.connect(audioCtx.destination);
+            
             osc.start();
-            osc.stop(audioCtx.currentTime + 0.3);
+            osc.stop(audioCtx.currentTime + 0.2);
 
-            if(bgmOn) setTimeout(playBGM, 600);
+            bgmStep++;
+            if(bgmOn) setTimeout(playBGM, 220); // Tempo lebih cepat dan bersemangat
         }
 
         function toggleBGM() {
@@ -342,6 +375,18 @@
             document.getElementById('btn-vo').innerText = `🔊 Suara/VO: ${voOn ? 'ON' : 'OFF'}`;
             if (!voOn && window.speechSynthesis) window.speechSynthesis.cancel();
             else speakCurrentQuestion();
+        }
+
+        function toggleReading() {
+            let box = document.getElementById('reading-box');
+            let icon = document.getElementById('toggle-icon');
+            if (box.classList.contains('hidden')) {
+                box.classList.remove('hidden');
+                icon.innerText = '▲';
+            } else {
+                box.classList.add('hidden');
+                icon.innerText = '▼';
+            }
         }
 
         function speakText(text) {
@@ -458,12 +503,10 @@
             }
         }
 
-        // CALCULATERESULT SESUAI REVISI (SKOR MAX 16)
         function calculateResult() {
             let pgkScore = 0; // max 12
             let uraianScore = 0; // max 4
 
-            // PGK Scoring
             quizData.forEach((q) => {
                 if (q.type === 'pgk') {
                     q.statements.forEach((st) => {
@@ -474,7 +517,6 @@
                 }
             });
 
-            // Uraian Scoring
             quizData.forEach((q, idx) => {
                 if (q.type === 'uraian') {
                     let userAns = (studentAnswers[`uraian_${idx}`] || '').toLowerCase();
@@ -487,7 +529,7 @@
                 }
             });
 
-            let totalSkor = pgkScore + uraianScore; // Max 16
+            let totalSkor = pgkScore + uraianScore;
             let nilaiAkhir = Math.round((totalSkor / 16) * 100);
 
             let kategori = "";
@@ -511,13 +553,11 @@
                 date: new Date().toLocaleString("id-ID")
             };
 
-            // 1. Simpan ke LocalStorage browser lokal
             let records = JSON.parse(localStorage.getItem('quiz_records') || '[]');
             records.push(record);
             localStorage.setItem('quiz_records', JSON.stringify(records));
 
-            // 2. Kirim data otomatis ke Google Sheets
-            if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL !== "PASTE_URL_GOOGLE_APPS_SCRIPT_DI_SINI") {
+            if (GOOGLE_SCRIPT_URL) {
                 fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -528,7 +568,6 @@
                 }).catch(error => console.error('Error pengiriman ke Google Sheets:', error));
             }
 
-            // Tampilkan Layar Hasil
             document.getElementById('screen-quiz').classList.add('hidden');
             document.getElementById('screen-result').classList.remove('hidden');
 
@@ -551,7 +590,6 @@
             location.reload();
         }
 
-        // PORTAL GURU FUNCTIONS
         function openTeacherPortal() {
             let pass = prompt("Masukkan Kata Sandi Guru:");
             if (pass === TEACHER_PASS) {
